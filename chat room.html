@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room with Authentication</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #auth-container, #chat-container {
+            width: 900%;
+            max-width: 1300px;
+            background-color: #fff;
+            border-radius: 0px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #auth-container div {
+            width: 100%;
+        }
+        #auth-container input {
+            margin-bottom: 10px;
+            padding: 10px;
+            width: calc(100% - 20px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #auth-container button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #auth-container button:hover {
+            background-color: #0056b3;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+        #messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-bottom: 1px solid #dddddd;
+            background-color: #f9f9f9;
+        }
+        #message-input {
+            display: flex;
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+        #message-input input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #message-input button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #message-input button:hover {
+            background-color: #0056b3;
+        }
+        #settings-container {
+            padding: 20px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+        #settings-container input {
+            margin-bottom: 10px;
+            padding: 10px;
+            width: calc(100% - 20px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #settings-container button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #settings-container button:hover {
+            background-color: #0056b3;
+        }
+        .profile-settings {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .profile-settings img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .profile-settings .dropdown {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 200px;
+        }
+        .profile-settings .dropdown.active {
+            display: block;
+        }
+        .profile-settings .dropdown button {
+            padding: 10px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            width: 100%;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .profile-settings .dropdown button:hover {
+            background-color: #0056b3;
+        }
+        .profile-settings .dropdown input {
+            padding: 10px;
+            width: calc(100% - 20px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="auth-container">
+    <div>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="signUp()">Sign Up</button>
+        <button onclick="login()">Login</button>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div class="profile-settings">
+        <img id="profile-pic" src="default-pic.png" alt="Profile Picture" onclick="toggleDropdown()">
+        <div class="dropdown" id="dropdown-menu">
+            <input type="file" id="profile-pic-upload" style="display:none;" onchange="uploadProfilePic()">
+            <button onclick="triggerFileInput()">Change Profile Picture</button>
+            <input type="text" id="new-display-name" placeholder="New Display Name">
+            <button onclick="updateProfile()">Change Display Name</button>
+            <button onclick="signOut()">Sign Out</button>
+        </div>
+    </div>
+    <div id="messages"></div>
+    <div id="message-input">
+        <input type="text" id="input-message" placeholder="Type your message here...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
+
+<script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyAwvzJWsS2Q5xSNo1NLfPBGvK6vjQ1wevw",
+        authDomain: "dead-room.firebaseapp.com",
+        projectId: "dead-room",
+        storageBucket: "dead-room.appspot.com",
+        messagingSenderId: "579182776672",
+        appId: "1:579182776672:web:ae43991185f26714c80e05",
+        measurementId: "G-09KB794W6S"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+    var auth = firebase.auth();
+    var storage = firebase.storage();
+
+    function signUp() {
+        var email = document.getElementById('email').value;
+        var password = document.getElementById('password').value;
+        var displayName = prompt("Enter your display name:");
+
+        auth.createUserWithEmailAndPassword(email, password)
+            .then(userCredential => {
+                var user = userCredential.user;
+                return user.updateProfile({ displayName: displayName });
+            })
+            .then(() => {
+                alert("Sign-up successful!");
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+            })
+            .catch(error => alert(error.message));
+    }
+
+    function login() {
+        var email = document.getElementById('email').value;
+        var password = document.getElementById('password').value;
+
+        auth.signInWithEmailAndPassword(email, password)
+            .then(() => {
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+                loadMessages();
+                loadProfilePic();
+            })
+            .catch(error => alert(error.message));
+    }
+
+    function loadMessages() {
+        db.collection("messages").orderBy("timestamp").onSnapshot(function(snapshot) {
+            var messages = document.getElementById('messages');
+            messages.innerHTML = '';
+            snapshot.forEach(function(doc) {
+                var message = doc.data();
+                var messageContainer = document.createElement('div');
+                messageContainer.textContent = message.name + ": " + message.text;
+                messages.appendChild(messageContainer);
+            });
+        });
+    }
+
+    function sendMessage() {
+        var input = document.getElementById('input-message');
+        var message = input.value.trim();
+        var user = auth.currentUser;
+
+        if (message && user) {
+            db.collection("messages").add({
+                text: message,
+                name: user.displayName || user.email.split('@')[0],
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            input.value = '';
+        }
+    }
+
+    function updateProfile() {
+        var newDisplayName = document.getElementById('new-display-name').value;
+        var user = auth.currentUser;
+
+        if (newDisplayName && user) {
+            user.updateProfile({ displayName: newDisplayName })
+                .then(() => {
+                    alert("Display name updated!");
+                    loadMessages();
+                })
+                .catch(error => alert(error.message));
+        } else {
+            alert("Please enter a new display name.");
+        }
+    }
+
+    function triggerFileInput() {
+        document.getElementById('profile-pic-upload').click();
+    }
+
+    function uploadProfilePic() {
+        var profilePic = document.getElementById('profile-pic-upload').files[0];
+        var user = auth.currentUser;
+
+        if (profilePic && user) {
+            var storageRef = storage.ref('profile_pics/' + user.uid + '/' + profilePic.name);
+            var uploadTask = storageRef.put(profilePic);
+
+            uploadTask.on('state_changed',
+                function(snapshot) {
+                    // Optionally handle upload progress
+                },
+                function(error) {
+                    console.error("Upload failed: ", error);
+                    alert("Failed to upload image.");
+                },
+                function() {
+                    uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                        user.updateProfile({ photoURL: downloadURL }).then(function() {
+                            document.getElementById('profile-pic').src = downloadURL;
+                            alert("Profile picture updated!");
+                        }).catch(function(error) {
+                            console.error("Failed to update profile picture URL: ", error);
+                            alert("Failed to update profile picture.");
+                        });
+                    }).catch(function(error) {
+                        console.error("Failed to get download URL: ", error);
+                        alert("Failed to get image URL.");
+                    });
+                }
+            );
+        } else {
+            alert("Please select an image.");
+        }
+    }
+
+    function loadProfilePic() {
+        var user = auth.currentUser;
+        if (user.photoURL) {
+            document.getElementById('profile-pic').src = user.photoURL;
+        } else {
+            document.getElementById('profile-pic').src = 'default-pic.png'; // Provide a default image
+        }
+    }
+
+    function toggleDropdown() {
+        var dropdown = document.getElementById('dropdown-menu');
+        dropdown.classList.toggle('active');
+    }
+
+    function signOut() {
+        auth.signOut().then(() => {
+            document.getElementById('auth-container').style.display = 'flex';
+            document.getElementById('chat-container').style.display = 'none';
+        }).catch(error => alert(error.message));
+    }
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'flex';
+            loadMessages();
+            loadProfilePic();
+        } else {
+            document.getElementById('auth-container').style.display = 'flex';
+            document.getElementById('chat-container').style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
